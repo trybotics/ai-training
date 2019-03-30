@@ -1,0 +1,408 @@
+
+<!DOCTYPE html>
+<html lang = "en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;charset=UTF-8" charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+     <!--Let browser know website is optimized for mobile-->
+    <meta name="description" content="Virtual Agent">
+    <meta name="keywords" content="Virtual Agent">
+    <meta name="author" content="Virtual Agent">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Chrome, Firefox OS and Opera -->
+    <meta name="theme-color" content="#2196f3">
+    <!-- Windows Phone -->
+    <meta name="msapplication-navbutton-color" content="#2196f3">
+    <!-- iOS Safari -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="#2196f3">
+    <link rel="shortcut icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSn3BNDgMACkamsIHppW8mmlOei8VyEDF2_PIoBD_Q3NeaoERpnfw" /> 
+    <title id='title'>Virtual Agent</title>
+    <!-- Import Google Icon -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Import Font Awesome Icon -->
+    <link rel="stylesheet" href="font-awesome.min.css">
+    <link rel="stylesheet" href="animate.min.css" />
+    <link rel="stylesheet" href="main.css" />
+    <script type="text/javascript" src="artyom.js"></script>
+    <script>
+      setTimeout(()=>{    
+          speak("Hello, I am Jess, your Virtual Assistant. What is your name.")
+      },1000)
+      let obeyKeyword = "start"
+      let defaultSentance = ["I didn't get that. Can you say it again?","I missed what you said. What was that?","Sorry, could you say that again?","Sorry, can you say that again?","Can you say that again?","Sorry, I didn't get that. Can you rephrase?","Sorry, what was that?","One more time?","What was that?","Say that one more time?","I didn't get that. Can you repeat?","I missed that, say that again?"]
+      var service
+      var geocode
+      const artyom = new Artyom()
+      let today = new Date()
+      var userName=""
+      let jobNo = 1
+      let mapResult = null
+      let address = null
+      let isIntentDetected = false
+      let jobUser = ['Karan Shaw','Khushboo Kumari']
+      let jobAddress = ['Howrah AC Market','New Town Kolkata']
+      let isSpeaking = false
+      let jobStatus = 0
+      artyom.fatality() // use this to stop any of
+      setTimeout(()=>{ // if you use artyom.fatality , wait 250 ms to initialize again.
+            artyom.initialize({
+              lang:"en-US", // A lot of languages are supported. Read the docs !
+              obeyKeyword:obeyKeyword, // obeyKeyword
+              continuous:true, // Artyom will listen forever
+              listen:true, // Start recognizing
+              debug:false, // Show everything in the console
+              speed:1 // talk normally
+          }).then(()=>{
+              console.log("Ready to work !")
+              // speak("Hello, I am a Virtual Agent, What is your name?")
+              artyom.addCommands([
+                  {
+                    indexes: ['my name is *'],
+                    smart:true,
+                    action: (i,wildcard) => {
+                      if(!isSpeaking){
+                        console.log(i,wildcard)
+                        isIntentDetected = true
+                        var fromCharCode = String.fromCharCode;
+                        userName = wildcard.replace(/\b[a-z]|\B[A-Z]/g,function(x){return fromCharCode(x.charCodeAt(0)^32)});
+                        let greeting = ""
+                        var curHr = today.getHours()
+                        if (curHr < 12) {
+                            greeting = "Good Morning, "
+                        } else if (curHr < 18) {
+                            greeting = "Good Afternoon, "
+                        } else {
+                            greeting = "Good Evening, "
+                        }
+                        speak(`${greeting+userName} You have ${jobUser.length} jobs to deliver`)
+                      }
+                    }
+                  },
+                  {
+                    indexes: [/what is the ETA/i,/what is the estimated time of arrival/i,/accept * job * 1/i,/accept * job * one/i],
+                    smart:true,
+                    action: (i,wildcard) => {
+                      if(!isSpeaking){
+                        console.log(i,wildcard)
+                        isIntentDetected = true
+                        jobNo=1
+                        getDistanceDetails(jobAddress[jobNo-1])
+                      }
+                    }
+                  },
+                  {
+                    indexes: ['accept job *'],
+                    smart:true,
+                    action: (i,wildcard) => {
+                      if(!isSpeaking){
+                        console.log(i,wildcard)
+                        isIntentDetected = true
+                        jobNo = Number(wildcard.replace(/[^0-9]+/ig,""))
+                        if(jobNo && jobAddress[jobNo-1]) {
+                          getDistanceDetails(jobAddress[jobNo-1])
+                        }
+                        else {
+                          speak('Job Id not found')
+                        }
+                      }
+                    }
+                  },
+                  {
+                    indexes: [/what are the jobs/i,/what are they/i,/tell me the jobs/i,/say me the jobs/i, /next job/i],
+                    smart:true,
+                    action: (i,wildcard) => {
+                      if(!isSpeaking){
+                        console.log(i,wildcard)
+                        isIntentDetected = true
+                        if(i<=3) {
+                          jobNo = 1
+                        }
+                        else {
+                          jobNo = jobNo + 1
+                        }
+
+                        if(jobNo && jobAddress[jobNo-1]){
+                          jobStatus = 1
+                          speak(`${ordinal_suffix_of(jobNo)} Job, Job ${jobNo} is for ${jobUser[jobNo-1]} in ${jobAddress[jobNo-1]}. Do you want to Accept the Job ${jobNo}`)
+                        }
+                        else {
+                          speak('No more Job left')
+                        }
+                      }
+                    }
+                  },
+                  {
+                    indexes: ['job *'],
+                    smart:true,
+                    action: (i,wildcard) => {
+                      if(!isSpeaking){
+                        console.log(i,wildcard)
+                        isIntentDetected = true
+                        jobNo = Number(wildcard.replace(/[^0-9]+/ig,""))
+                        if(jobNo && jobAddress[jobNo-1]) {
+                          jobStatus = 1
+                          speak(`${ordinal_suffix_of(jobNo)} Job, Job ${jobNo} is for ${jobUser[jobNo-1]} in ${jobAddress[jobNo-1]}. Do you want to Accept the Job ${jobNo}`)
+                        }
+                        else {
+                          speak('Job Id not found')
+                        }
+                      }
+                    }
+                  },
+                  {
+                    indexes: [/navigation/i,/navigate/i],
+                    smart:true,
+                    action: (i,wildcard) => {
+                      if(!isSpeaking){
+                        console.log(i,wildcard)
+                        isIntentDetected = true
+                        speak('Ok '+userName+' Let me enable google maps on the phone from the current locations to destination address.')
+                        let url = 'https://www.google.co.in/maps/dir/'+address+'/'+jobAddress[jobNo-1]+'?dir_action=navigate'
+                        console.log(url)
+                        window.open(url)
+                      }
+                    },
+                  },
+                  {
+                    indexes: [/stop/i,/pause/i],
+                    smart:true,
+                    action: (i,wildcard) => {
+                      if(!isSpeaking){
+                        console.log(i,wildcard)
+                        isIntentDetected = true
+                        artyom.dontObey()
+                        speak("ok, I have stopped listening")
+                      }
+                    },
+                  },
+                  {
+                    indexes: [/no/i,/don't/i,/do not/i],
+                    smart:true,
+                    action: (i,wildcard) => {
+                      if(!isSpeaking){
+                        console.log(i,wildcard)
+                        isIntentDetected = true
+                        speak("Ok, I will not do that")
+                      }
+                    },
+                  },
+                  {
+                    indexes: [/exit/i,/close/i],
+                    smart:true,
+                    action: (i,wildcard) => {
+                      if(!isSpeaking){
+                        console.log(i,wildcard)
+                        isIntentDetected = true
+                        // artyom.dontObey()
+                        // speak("Ok")
+                        window.open('', '_self', '')
+                        window.close()
+                      }
+                    }
+                  },
+                  {
+                    indexes: [/yes/i],
+                    smart:true,
+                    action: (i,wildcard) => {
+                      if(!isSpeaking){
+                        console.log(i,wildcard)
+                        isIntentDetected = true
+                        if(jobStatus == 1){
+                          if(jobNo && jobAddress[jobNo-1]) {
+                            getDistanceDetails(jobAddress[jobNo-1])
+                          }
+                          else {
+                            speak('Job Id not found')
+                          }
+                        } else if(jobStatus == 2) {
+                          jobStatus=0
+                          speak('Ok '+userName+' Let me enable google maps on the phone from the current locations to destination address.')
+                          let url = 'https://www.google.co.in/maps/dir/'+address+'/'+jobAddress[jobNo-1]+'?dir_action=navigate'
+                          console.log(url)
+                          window.open(url)
+                        }
+                      }
+                    }
+                  }
+              ])
+          })
+      },200)
+
+      ordinal_suffix_of=(i)=>{
+          var j = i % 10,
+              k = i % 100;
+          if (j == 1 && k != 11) {
+              return i + "st";
+          }
+          if (j == 2 && k != 12) {
+              return i + "nd";
+          }
+          if (j == 3 && k != 13) {
+              return i + "rd";
+          }
+          return i + "th";
+      }
+
+      speak=(string)=>{
+        console.log("Speak: "+string)
+        isSpeaking = true
+        setTimeout(()=>{
+            scrollToBottom('inner')
+        },500)
+        document.getElementById("content").innerHTML = document.getElementById("content").innerHTML+`<div class="message-wrapper them">
+            <img class="circle-wrapper animated bounceIn" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcShoZ4NV8_d9CpPhZH4Kit5vU8yw5gKcZd_cDbwUYVcnbv66rtfiA">
+            <div class="text-wrapper animated fadeIn">${string}</div>
+        </div>`
+        var speech = new SpeechSynthesisUtterance()
+        speech.voiceURI = 'native'
+        speech.volume = 1 // 0 to 1
+        speech.rate = 1
+        speech.text = string
+        speech.lang = 'en-US'
+        speech.onend = function(e) {
+            // setTimeout(()=>{
+                isSpeaking = false
+                artyom.getNativeApi().abort()
+            // },500)
+        }
+        speechSynthesis.speak(speech)
+      }
+      artyom.redirectRecognizedTextOutput((recognized,isFinal)=>{
+          if(isFinal){
+              if(artyom.isObeying() && recognized && !isSpeaking){
+                  document.getElementById("content").innerHTML = document.getElementById("content").innerHTML+`<div class="message-wrapper me">
+                      <img class="circle-wrapper animated bounceIn" src="http://icons.iconarchive.com/icons/visualpharm/must-have/256/User-icon.png">
+                      <div class="text-wrapper animated fadeIn">${recognized}</div>
+                  </div>`
+                  // document.getElementById("input").value = ''
+                  setTimeout(()=>{
+                      console.log("Final recognized text: " + recognized) 
+                      if(isIntentDetected){
+                          isIntentDetected = false 
+                      } else {
+                          if(recognized.toLowerCase().includes(obeyKeyword)){
+                              speak("ok, I have started listening")
+                          } else {
+                              let sentence = defaultSentance[Math.floor(Math.random() * defaultSentance.length)]
+                              console.log("Default Reply " + sentence)
+                              speak(sentence)
+                          }
+                          
+                      }
+                      scrollToBottom('inner')
+                  }, 100)
+              }
+          }else{
+              if(artyom.isObeying() && recognized && !isSpeaking){
+                  // document.getElementById("input").value = recognized
+                  console.log(recognized)
+              }
+          }
+      })
+      scrollToBottom = (id) => {
+          var div = document.getElementById(id)
+          if(div){
+            div.scrollTop = div.scrollHeight - div.clientHeight
+          }
+        }
+      getDistanceDetails=(destinations)=>{
+          console.log(destinations)
+          jobStatus = 2
+          if(address){
+            service.getDistanceMatrix({
+              origins: [address],
+              destinations: [destinations],
+              travelMode: 'DRIVING',
+              unitSystem: google.maps.UnitSystem.METRIC,
+              avoidHighways: false,
+              avoidTolls: false,
+              drivingOptions: {
+                departureTime: new Date(Date.now()),  // + N for the time N milliseconds from now.
+                trafficModel: 'optimistic'
+              }
+            },(response, status)=>{
+              if (status !== 'OK') {
+                console.log('Error was: ' + status)
+              } else {
+                console.log(response, mapResult)
+                mapResult = response.rows[0].elements[0]
+                speak(`${userName } let me calculate the estimated time of arrival based on the most efficient route. Your distance is ${mapResult.distance.text.replace('km','Kilo Meter')}. Your travel duration for the Job ${(jobNo)} is ${mapResult.duration.text.replace('mins','minutes')}. Your duration in traffic is ${mapResult.duration_in_traffic.text.replace('mins','minutes')}. Your estimated time of arrival is ${moment().add(mapResult.duration.value, 'seconds').format('LT')}. ${ userName }, do you want me to start navigation`)
+                // speak(userName+' Let me calculate the estimated time of arrival based on the most efficient route. Your total distance is '+mapResult.distance.text.replace('km','Kilo Meter')+'. Your estimated duration for the Job 1 is '+mapResult.duration.text.replace('mins','minutes')+'. You will arrive at '+moment().add(mapResult.duration.value, 'seconds').format('LT')+'. Your duration in traffic will be '+mapResult.duration_in_traffic.text.replace('mins','minutes')+'. '+userName+' Do you want me to start navigation')
+              }
+            })
+          }
+          else {
+            alert('GPS locations not found, please check your GPS setting')
+          }
+      }
+      initMap=()=>{
+            service = new google.maps.DistanceMatrixService
+            geocoder = new google.maps.Geocoder()
+            geoError=()=>{
+                console.log("Geocoder failed.")
+            }
+            geoSuccess=(position)=>{
+                // var lat = '-33.884556'
+                // var lng = '151.194583'
+                var lat = position.coords.latitude
+                var lng = position.coords.longitude
+                console.log("lat:" + lat + " lng:" + lng)
+                codeLatLng(lat, lng)
+            }
+            codeLatLng=(lat, lng)=>{
+                var latlng = new google.maps.LatLng(lat, lng)
+                geocoder.geocode({'latLng': latlng}, (results, status)=>{
+                  if(status == google.maps.GeocoderStatus.OK) {
+                      console.log(results)
+                      if(results[1]) {
+                          //formatted address
+                          address = results[0].formatted_address
+                          console.log("Address = " + address)
+                      } else {
+                          console.log("No results found")
+                      }
+                  } else {
+                      console.log("Geocoder failed due to: " + status)
+                  }
+                })
+            }
+            if(navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(geoSuccess, geoError)
+            } else {
+                console.log("Geolocation is not supported by this browser.")
+            }
+        }
+      function refresh(){
+        window.location.reload()
+      }
+    </script>
+  </head>
+  <body style="margin: 0px;font-family: 'Roboto', sans-serif;" class="bodyBgColor">
+    <h1 class="title">Virtual Agent</h1>
+    <div class="wrapper">
+        <nav class="nav" id="nav">
+            <div class="default-nav">
+              <div class="main-nav">
+                <div class="toggle">Virtual Agent</div>
+              </div>
+            </div>
+        </nav>
+        <div class="inner" id="inner">
+            <div class="content" id="content">
+            </div>
+        </div>
+        <div class="bottom" id="bottom">
+            <!-- <textarea class="input" id="input" disabled="true"></textarea> -->
+            <img onclick='refresh()' class="send" alt="Start" 
+               id="send"
+              src="https://www.google.com/intl/en/chrome/assets/common/images/content/mic-animate.gif"
+            />
+        </div>
+    </div>
+    <noscript>
+        You need to enable JavaScript to run this app.
+    </noscript>
+    <script type="text/javascript" src="moment-with-locales.min.js"></script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDT1Dxx0J3R56qL0AtQTRTtyC2X_Bar16s&callback=initMap"></script>
+  </body>
+</html>
