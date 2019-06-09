@@ -2,6 +2,6 @@
 
 import pandas as pd
  
-country= pd.read_csv("C:\\Users\\nexright\\Desktop\\AI Training\\Module 2\\Pandas_Example\\world-bank-youth-unemployment.csv",index_col=0)
+country= pd.read_csv("/home/gautam/ai-training/Module 2/Pandas_Example/world-bank-youth-unemployment.csv",index_col=0)
  
 country.to_html('edu.html')
